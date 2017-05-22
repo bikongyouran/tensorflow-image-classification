@@ -11,18 +11,19 @@ BOTTLENECK_TENSOR_NAME = 'pool_3/_reshape:0'
 JPEG_DATA_TENSOR_NAME = 'DecodeJpeg/contents:0'
 
 
-MODEL_DIR = '../../datasets/inception_dec_2015'
+MODEL_DIR = './inception_dec_2015'
 MODEL_FILE= 'tensorflow_inception_graph.pb'
 
-CACHE_DIR = '../../datasets/bottleneck'
-INPUT_DATA = '../../datasets/flower_photos'
+CACHE_DIR = './bottleneck'
+INPUT_DATA = './flower_photos'
+# INPUT_DATA = './data'
 
 VALIDATION_PERCENTAGE = 10
 TEST_PERCENTAGE = 10
 
 # 2. 神经网络参数的设置
 LEARNING_RATE = 0.01
-STEPS = 4000
+STEPS = 2000
 BATCH = 100
 
 # 3. 把样本中所有的图片列表并按训练、验证、测试数据分开
@@ -164,6 +165,7 @@ def main():
         graph_def, return_elements=[BOTTLENECK_TENSOR_NAME, JPEG_DATA_TENSOR_NAME])
 
     # 定义新的神经网络输入
+    # bottleneck_input = tf.placeholder(bottleneck_tensor, [None, BOTTLENECK_TENSOR_SIZE], name='BottleneckInputPlaceholder')
     bottleneck_input = tf.placeholder(tf.float32, [None, BOTTLENECK_TENSOR_SIZE], name='BottleneckInputPlaceholder')
     ground_truth_input = tf.placeholder(tf.float32, [None, n_classes], name='GroundTruthInput')
 
@@ -172,7 +174,7 @@ def main():
         weights = tf.Variable(tf.truncated_normal([BOTTLENECK_TENSOR_SIZE, n_classes], stddev=0.001))
         biases = tf.Variable(tf.zeros([n_classes]))
         logits = tf.matmul(bottleneck_input, weights) + biases
-        final_tensor = tf.nn.softmax(logits)
+        final_tensor = tf.nn.softmax(logits,name='final_result')
 
     # 定义交叉熵损失函数。
     cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=ground_truth_input)
@@ -208,6 +210,17 @@ def main():
         test_accuracy = sess.run(evaluation_step, feed_dict={
             bottleneck_input: test_bottlenecks, ground_truth_input: test_ground_truth})
         print('Final test accuracy = %.1f%%' % (test_accuracy * 100))
+
+        # save the retrained model.
+        graph_def2 = sess.graph.as_graph_def()
+        # tf.train.write_graph(graph_def2, 'C:\codes\\tensorflow-image-classification', 'output_graph3.pb')
+        # print('save the retrained model: output_graph3.pb')
+
+        from tensorflow.python.framework import graph_util
+        output_graph_def = graph_util.convert_variables_to_constants(sess,graph_def2,['final_result'])
+        with tf.gfile.GFile('C:\codes\\tensorflow-image-classification\\retrained_model_graph.pb','wb') as f:
+            f.write(output_graph_def.SerializeToString())
+        print('save the retrained model: retrained_model_graph.pb')
 
 if __name__ == '__main__':
     main()
